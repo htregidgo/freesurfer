@@ -212,7 +212,9 @@ def maskOutBackground( imageBuffers, atlasFileName, transform,
 
 
 def getBiasFieldBasisFunctions( imageSize, smoothingKernelSize ):
-  
+
+    # Todo: look here for the basis functions for brightness field correction
+    #
     # Our bias model is a linear combination of a set of basis functions. We are using so-called
     # "DCT-II" basis functions, i.e., the lowest few frequency components of the Discrete Cosine
     # Transform.
@@ -228,7 +230,7 @@ def getBiasFieldBasisFunctions( imageSize, smoothingKernelSize ):
         A = np.array( [ [ math.cos( freq * m ) * scaling[ m ] for m in range( M ) ] for freq in js ] )
         biasFieldBasisFunctions.append( A )
         
-            
+
     return biasFieldBasisFunctions
 
 
@@ -297,6 +299,7 @@ def getDownSampledModel( imageBuffers, mask, atlasFileName, K, transform, biasFi
                                                                            ::downSamplingFactors[2],
                                                                            contrastNumber ]
 
+    # Todo: look here for downsampling of bias field basis functions
     downSampledBiasFieldBasisFunctions = [ np.array( biasFieldBasisFunction[ ::downSamplingFactor ] )
                                                   for biasFieldBasisFunction, downSamplingFactor in
                                                   zip( biasFieldBasisFunctions, downSamplingFactors ) ]
@@ -901,7 +904,8 @@ def estimateModelParameters( imageBuffers, mask, biasFieldBasisFunctions, transf
         estimateBiasField = optimizationOptions.multiResolutionSpecification[multiResolutionLevel].estimateBiasField
         historyOfCost = [ 1/eps ]
         logger.debug( 'maximumNumberOfIterations: %d', maximumNumberOfIterations )
-        
+
+        # Todo: look here for bias field basis functions downsampling
         # Downsample the images, the mask, the mesh, and the bias field basis functions (integer)
         logger.debug( 'Setting up downsampled model' )
         downSamplingFactors = np.uint32( np.round( optimizationOptions.multiResolutionSpecification[
@@ -965,7 +969,7 @@ def estimateModelParameters( imageBuffers, mask, biasFieldBasisFunctions, transf
                                                                             downSampledClassPriors, numberOfGaussiansPerClass, 
                                                                             useDiagonalCovarianceMatrices )
 
-                
+            # Todo: look here for handling of downsampled bias field basis functions
             if biasFieldCoefficients is None:
                 numberOfBasisFunctions = [ functions.shape[1] for functions in downSampledBiasFieldBasisFunctions ]
                 numberOfContrasts = downSampledImageBuffers.shape[-1]
@@ -978,7 +982,8 @@ def estimateModelParameters( imageBuffers, mask, biasFieldBasisFunctions, transf
             while True:  
                 logger.debug( 'EMIterationNumber=%d', EMIterationNumber )
 
-                # Precompute intensities after bias field correction for later use (really only caching something that 
+                # Todo: look here for calculation of bias fields
+                # Precompute intensities after bias field correction for later use (really only caching something that
                 # doesn't really figure in the model -- the real variable is biasFieldCoefficients)
                 downSampledBiasFields = getBiasFields( biasFieldCoefficients, 
                                                       downSampledBiasFieldBasisFunctions,  downSampledMask )
@@ -1062,7 +1067,8 @@ def estimateModelParameters( imageBuffers, mask, biasFieldBasisFunctions, transf
                                                                             downSampledHyperMixtureWeights,
                                                                             downSampledHyperMixtureWeightsNumberOfMeasurements,
                                                                             fitGMMParametersPluginDictionary )
-                    
+
+                # Todo: look here for fitting of the bias field coefficients
                 # Now update the parameters of the bias field model.
                 if ( estimateBiasField and 
                      not ( ( iterationNumber == 0 ) and skipBiasFieldParameterEstimationInFirstIteration ) ):
@@ -1409,6 +1415,7 @@ def samsegment( imageFileNames, atlasDir, savePath,
     # transform the data first.
     imageBuffers = logTransform( imageBuffers, mask )
 
+    # Todo: here is the entry point to the bias field optimisation
     # Our bias model is a linear combination of a set of basis functions. We are using so-called "DCT-II" basis functions, 
     # i.e., the lowest few frequency components of the Discrete Cosine Transform.
     biasFieldBasisFunctions = getBiasFieldBasisFunctions( imageBuffers.shape[ 0:3 ], 
@@ -1454,6 +1461,7 @@ def samsegment( imageFileNames, atlasDir, savePath,
     numberOfGaussiansPerClass = [ param.numberOfComponents for param in modelSpecifications.sharedGMMParameters ]
     classFractions, _ = gems.kvlGetMergingFractionsTable( modelSpecifications.names, modelSpecifications.sharedGMMParameters )
 
+    # Todo: look here for useage of the basis functions for the bias field
     means, variances, mixtureWeights, biasFieldCoefficients, \
     deformation, deformationAtlasFileName, optimizationSummary, optimizationHistory = \
             estimateModelParameters( imageBuffers, mask, biasFieldBasisFunctions, transform, voxelSpacing,
