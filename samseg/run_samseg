@@ -21,6 +21,7 @@ parser.add_argument('--threads', type=int, default=os.environ.get('OMP_NUM_THREA
 parser.add_argument('--reg-only', action='store_true', default=False, help='Only perform initial affine registration.')
 parser.add_argument('-r', '--reg', metavar='FILE', help='Skip initial affine registration and read transform from file.')
 parser.add_argument('--reg-mat', metavar='FILE', help='Skip initial affine registration and read matlab transform from file.')
+parser.add_argument('--photo-seg', metavar='FILE', help='Modifies method to run on photo volume, requires pre-registered template file.')
 parser.add_argument('--init-lta', metavar='FILE', help='Initial affine registration.')
 parser.add_argument('-a', '--atlas', metavar='DIR', help='Point to an alternative atlas directory.')
 parser.add_argument('--options', metavar='FILE', help='Override advanced options via a json file.')
@@ -73,30 +74,37 @@ visualizer = initVisualizer(args.showfigs, args.movie)
 
 fs.printPeakMemory('run_samseg performing affine reg')
 
-templateFileName = os.path.join(atlasDir, 'template.nii')
-affineRegistrationMeshCollectionFileName = os.path.join(atlasDir, 'atlasForAffineRegistration.txt.gz')
-
-if args.reg_mat:
-    worldToWorldTransformMatrix = scipy.io.loadmat(args.reg_mat).get('worldToWorldTransformMatrix')
-elif args.reg:
-    worldToWorldTransformMatrix = fs.LinearTransform.read(args.reg).matrix
+# check if segmenting a reconstructed photo volume. Currently this requires a pre-registered template input.
+if args.photo_seg:
+    transformedTemplateFileName = args.photo_seg
 else:
-    worldToWorldTransformMatrix = None
+    templateFileName = os.path.join(atlasDir, 'template.nii')
 
-_, transformedTemplateFileName, optimizationSummary = registerAtlas( args.inputFileNames[0],
-                                                                     affineRegistrationMeshCollectionFileName,
-                                                                     templateFileName,
-                                                                     args.outputDirectory,
-                                                                     visualizer,
-                                                                     worldToWorldTransformMatrix,
-                                                                     args.init_lta
-                                                                   )
+    affineRegistrationMeshCollectionFileName = os.path.join(atlasDir, 'atlasForAffineRegistration.txt.gz')
 
-# Save a summary of the optimization process
-if optimizationSummary:
-    with open( costfile, "a") as file:
-        file.write( "templateRegistration %d %f\n" % (optimizationSummary['numberOfIterations'],
-                                                      optimizationSummary['cost']))
+    if args.reg_mat:
+        worldToWorldTransformMatrix = scipy.io.loadmat(args.reg_mat, mat_dtype=True).get('worldToWorldTransformMatrix')
+    elif args.reg:
+        worldToWorldTransformMatrix = fs.LinearTransform.read(args.reg).matrix
+    else:
+        worldToWorldTransformMatrix = None
+
+    # Todo: look here to work out registration flagging
+    _, transformedTemplateFileName, optimizationSummary = registerAtlas( args.inputFileNames[0],
+                                                                         affineRegistrationMeshCollectionFileName,
+                                                                         templateFileName,
+                                                                         args.outputDirectory,
+                                                                         visualizer,
+                                                                         worldToWorldTransformMatrix,
+                                                                         args.init_lta
+                                                                       )
+
+    # Save a summary of the optimization process
+    if optimizationSummary:
+        with open( costfile, "a") as file:
+            file.write( "templateRegistration %d %f\n" % (optimizationSummary['numberOfIterations'],
+                                                          optimizationSummary['cost']))
+
 
 timer.mark('atlas registration complete')
 if args.reg_only:
