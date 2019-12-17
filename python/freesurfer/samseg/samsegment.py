@@ -211,7 +211,7 @@ def maskOutBackground( imageBuffers, atlasFileName, transform,
     return maskedImageBuffers, brainMask
 
 
-def getBiasFieldBasisFunctions( imageSize, smoothingKernelSize ):
+def getBiasFieldBasisFunctions( imageSize, smoothingKernelSize,photoSeg=False ):
 
     # Todo: look here for the basis functions for brightness field correction
     #
@@ -219,16 +219,26 @@ def getBiasFieldBasisFunctions( imageSize, smoothingKernelSize ):
     # "DCT-II" basis functions, i.e., the lowest few frequency components of the Discrete Cosine
     # Transform.
     biasFieldBasisFunctions = []
-    for dimensionNumber in range( 3 ):
-        N = imageSize[ dimensionNumber ]
-        delta = smoothingKernelSize[ dimensionNumber ]
-        M = math.ceil( N / delta ) + 1
-        Nvirtual = ( M - 1 ) * delta
-        js = [ (index + 0.5) * math.pi / Nvirtual for index in range( N ) ]
-        scaling = [ math.sqrt( 2 / Nvirtual ) ] * M
-        scaling[ 0 ] /= math.sqrt( 2 )
-        A = np.array( [ [ math.cos( freq * m ) * scaling[ m ] for m in range( M ) ] for freq in js ] )
+    if photoSeg:
+        for dimensionNumber in range( 2 ):
+            N = imageSize[ dimensionNumber ]
+            A = np.ones((N,1),dtype=np.float64)
+            biasFieldBasisFunctions.append( A )
+
+        N = imageSize[ 2 ]
+        A = np.identity(N,dtype=np.float64)
         biasFieldBasisFunctions.append( A )
+    else:
+        for dimensionNumber in range( 3 ):
+            N = imageSize[ dimensionNumber ]
+            delta = smoothingKernelSize[ dimensionNumber ]
+            M = math.ceil( N / delta ) + 1
+            Nvirtual = ( M - 1 ) * delta
+            js = [ (index + 0.5) * math.pi / Nvirtual for index in range( N ) ]
+            scaling = [ math.sqrt( 2 / Nvirtual ) ] * M
+            scaling[ 0 ] /= math.sqrt( 2 )
+            A = np.array( [ [ math.cos( freq * m ) * scaling[ m ] for m in range( M ) ] for freq in js ] )
+            biasFieldBasisFunctions.append( A )
         
 
     return biasFieldBasisFunctions
@@ -1347,7 +1357,7 @@ def samsegment( imageFileNames, atlasDir, savePath,
                 fitGMMParametersPluginVariables=None,
                 posteriorPlugin=None,
                 posteriorPluginVariables=None,
-                threshold=None, thresholdSearchString=None, savePosteriors=False, saveWarp=False
+                threshold=None, thresholdSearchString=None, savePosteriors=False, saveWarp=False, photoSeg=False
                 ):
 
     # Get full model specifications and optimization options (using default unless overridden by user) 
@@ -1419,7 +1429,8 @@ def samsegment( imageFileNames, atlasDir, savePath,
     # Our bias model is a linear combination of a set of basis functions. We are using so-called "DCT-II" basis functions, 
     # i.e., the lowest few frequency components of the Discrete Cosine Transform.
     biasFieldBasisFunctions = getBiasFieldBasisFunctions( imageBuffers.shape[ 0:3 ], 
-                                                          modelSpecifications.biasFieldSmoothingKernelSize / voxelSpacing )
+                                                          modelSpecifications.biasFieldSmoothingKernelSize / voxelSpacing,
+                                                          photoSeg)
 
     # Visualize some stuff
     if hasattr( visualizer, 'show_flag' ):

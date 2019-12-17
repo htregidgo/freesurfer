@@ -76,8 +76,10 @@ fs.printPeakMemory('run_samseg performing affine reg')
 
 # check if segmenting a reconstructed photo volume. Currently this requires a pre-registered template input.
 if args.photo_seg:
+    photoSegFlag = True
     transformedTemplateFileName = args.photo_seg
 else:
+    photoSegFlag = False
     templateFileName = os.path.join(atlasDir, 'template.nii')
 
     affineRegistrationMeshCollectionFileName = os.path.join(atlasDir, 'atlasForAffineRegistration.txt.gz')
@@ -136,7 +138,8 @@ labels, names, volumes, optimizationSummary = \
                 visualizer=visualizer, saveHistory=args.history, saveMesh=args.save_mesh,
                 targetIntensity=110, targetSearchStrings=[ 'Cerebral-White-Matter' ],
                 savePosteriors=args.save_posteriors,
-                saveWarp=args.save_warp)
+                saveWarp=args.save_warp,
+                photoSeg=photoSegFlag)
 
 # Save a summary of the optimization process
 with open( costfile, "a" ) as file:
