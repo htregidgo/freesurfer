@@ -874,7 +874,8 @@ def estimateModelParameters( imageBuffers, mask, biasFieldBasisFunctions, transf
                              evaluateMinLogPriorOfGMMParametersPlugin=None,
                              evaluateMinLogPriorOfGMMParametersPluginVariables=None,
                              fitGMMParametersPlugin=None,
-                             fitGMMParametersPluginVariables=None
+                             fitGMMParametersPluginVariables=None,
+                             skipOutOfPlaneResampling=False
                              ):
 
     #  
@@ -921,6 +922,9 @@ def estimateModelParameters( imageBuffers, mask, biasFieldBasisFunctions, transf
         downSamplingFactors = np.uint32( np.round( optimizationOptions.multiResolutionSpecification[
                                                       multiResolutionLevel ].targetDownsampledVoxelSpacing / voxelSpacing ) )
         downSamplingFactors[ downSamplingFactors < 1 ] = 1
+        if skipOutOfPlaneResampling:
+            downSamplingFactors[ 2 ] = 1
+
         downSampledImageBuffers, downSampledMask, downSampledMesh, downSampledInitialDeformationApplied, \
             downSampledTransform, downSampledBiasFieldBasisFunctions = \
             getDownSampledModel( imageBuffers, mask,
@@ -1482,7 +1486,8 @@ def samsegment( imageFileNames, atlasDir, savePath,
                                     evaluateMinLogPriorOfGMMParametersPlugin=evaluateMinLogPriorOfGMMParametersPlugin,
                                     evaluateMinLogPriorOfGMMParametersPluginVariables=evaluateMinLogPriorOfGMMParametersPluginVariables,
                                      fitGMMParametersPlugin=fitGMMParametersPlugin,
-                                    fitGMMParametersPluginVariables=fitGMMParametersPluginVariables
+                                    fitGMMParametersPluginVariables=fitGMMParametersPluginVariables,
+                                     skipOutOfPlaneResampling=photoSeg
                                     )
 
 
