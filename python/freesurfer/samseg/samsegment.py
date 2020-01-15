@@ -211,7 +211,7 @@ def maskOutBackground( imageBuffers, atlasFileName, transform,
     return maskedImageBuffers, brainMask
 
 
-def getBiasFieldBasisFunctions( imageSize, smoothingKernelSize,photoSeg=False ):
+def getBiasFieldBasisFunctions( imageSize, smoothingKernelSize, photoSeg=False, bilinear=False ):
 
     # Todo: look here for the basis functions for brightness field correction
     #
@@ -219,7 +219,7 @@ def getBiasFieldBasisFunctions( imageSize, smoothingKernelSize,photoSeg=False ):
     # "DCT-II" basis functions, i.e., the lowest few frequency components of the Discrete Cosine
     # Transform.
     biasFieldBasisFunctions = []
-    if photoSeg:
+    if bilinear:  # photoSeg:
         for dimensionNumber in range( 2 ):
             N = imageSize[ dimensionNumber ]
             A = np.ones((N,1),dtype=np.float64)
@@ -228,6 +228,18 @@ def getBiasFieldBasisFunctions( imageSize, smoothingKernelSize,photoSeg=False ):
         N = imageSize[ 2 ]
         A = np.identity(N,dtype=np.float64)
         biasFieldBasisFunctions.append( A )
+    elif photoSeg:  # bilinear:
+        for dimensionNumber in range(2):
+            N = imageSize[dimensionNumber]
+            A = np.empty((N, 3), dtype=np.float64)
+            A[:, 0] = np.ones((N),dtype=np.float64)
+            A[:, 1] = np.linspace(0,1,N,dtype=np.float64)
+            A[:, 2] = np.flipud(A[:,1])
+            biasFieldBasisFunctions.append(A)
+
+        N = imageSize[2]
+        A = np.identity(N, dtype=np.float64)
+        biasFieldBasisFunctions.append(A)
     else:
         for dimensionNumber in range( 3 ):
             N = imageSize[ dimensionNumber ]
