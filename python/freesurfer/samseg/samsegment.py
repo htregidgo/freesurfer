@@ -672,7 +672,7 @@ def evaluateMinLogPriorOfGMMParameters( means, variances, mixtureWeights,
   
   
 
-def fitBiasFieldParameters( imageBuffers, gaussianPosteriors, means, variances, biasFieldBasisFunctions, mask ):
+def fitBiasFieldParameters( imageBuffers, gaussianPosteriors, means, variances, biasFieldBasisFunctions, mask, brightnessflag=False ):
 
     # Bias field correction: implements Eq. 8 in the paper
     #    Van Leemput, "Automated Model-based Bias Field Correction of MR Images of the Brain", IEEE TMI 1999
@@ -721,8 +721,12 @@ def fitBiasFieldParameters( imageBuffers, gaussianPosteriors, means, variances, 
         tmpImageBuffer[ mask ] = tmp
         rhs[ contrast1Indices ] = projectKroneckerProductBasisFunctions( biasFieldBasisFunctions, 
                                                                           tmpImageBuffer ).reshape(-1, 1)
-          
-    # Solve the linear system x = lhs \ rhs       
+
+    # ToDo look here for regularisation switch
+    # Solve the linear system x = lhs \ rhs
+    if brightnessflag:
+        lhs = lhs + 1e-5 * np.identity(lhs.shape[1],lhs.dtype)
+
     solution = np.linalg.solve( lhs, rhs )
     
     #
@@ -1101,7 +1105,7 @@ def estimateModelParameters( imageBuffers, mask, biasFieldBasisFunctions, transf
                     biasFieldCoefficients = fitBiasFieldParameters( downSampledImageBuffers, 
                                                                     downSampledGaussianPosteriors, means, variances,
                                                                     downSampledBiasFieldBasisFunctions, 
-                                                                    downSampledMask )
+                                                                    downSampledMask,skipOutOfPlaneResampling )
                 # End test if bias field update
                 
             # End loop over EM iterations
