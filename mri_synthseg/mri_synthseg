@@ -56,6 +56,7 @@ def main():
     parser.add_argument("--keepgeom", action="store_true", help="Force output geometry to be the same as input")
     parser.add_argument("--addctab", action="store_true", help="Embed colortable into seg output")
     parser.add_argument("--photo", help="(optional) Photo-SynthSeg: segment 3D reconstructed stack of coronal dissection photos of the cerebrum; must be left, right, or both")
+    parser.add_argument("--resume", action="store_true", help="(optional) Continue a partially computed directory.")
 
     # check for no arguments
     if len(sys.argv) < 2:
@@ -150,6 +151,13 @@ def main():
         print('using CPU, hiding all CUDA_VISIBLE_DEVICES')
         os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
+    # Continue processing partially completed directory
+    if args.resume:
+        print('continuing previously started directory')
+        resume_directory = True
+    else:
+        resume_directory = False
+
     # limit the number of threads to be used if running on CPU
     if args.threads == 1:
         print('using 1 thread')
@@ -194,7 +202,8 @@ def main():
         topology_classes=topology_classes,
         ct=args.ct,
         keepgeom=args.keepgeom,
-        labels=labels
+        labels=labels,
+        resume_directory=resume_directory
     )
 
 
@@ -230,7 +239,8 @@ def predict(path_images,
             topology_classes,
             ct,
             keepgeom=False,
-            labels=None):
+            labels=None,
+            resume_directory=False):
     '''
     Prediction pipeline.
     '''
@@ -282,10 +292,21 @@ def predict(path_images,
     else:
         min_pad = 128
 
-    # prepare volume/QC files if necessary
+    # check if new volume or qc files need to be initialised
+    # won't write over an existing file if we're resuming a directory
     if unique_vol_file & (path_volumes[0] is not None):
-        write_csv(path_volumes[0], None, True, labels_volumes, names_volumes, last_first=((not v1) & (photo is None)))
+        init_vol_file = (not resume_directory) | (not os.path.isfile(path_volumes[0]))
+    else:
+        init_vol_file = False
     if unique_qc_file & do_qc:
+        init_qc_file = (not resume_directory) | (not os.path.isfile(path_qc_scores[0]))
+    else:
+        init_qc_file = False
+
+    # prepare volume/QC files if necessary
+    if init_vol_file:
+        write_csv(path_volumes[0], None, True, labels_volumes, names_volumes, last_first=((not v1) & (photo is None)))
+    if init_qc_file:
         write_csv(path_qc_scores[0], None, True, labels_qc, names_qc)
 
     # build network
@@ -306,9 +327,17 @@ def predict(path_images,
         loop_info = LoopInfo(len(path_images), 1, 'predicting', True)
     else:
         loop_info = LoopInfo(len(path_images), 10, 'predicting', True)
+    resume_checkpoint_flag = True
     list_errors = list()
     for i in range(len(path_images)):
         loop_info.update(i)
+
+        if resume_directory:
+            if os.path.isfile(path_segmentations[i]):
+                continue
+            elif resume_checkpoint_flag:
+                print('Resuming at subject %d' % (i+1))
+                resume_checkpoint_flag = False
 
         try:
 
